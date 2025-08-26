@@ -1,0 +1,124 @@
+  <!DOCTYPE html>
+  <html lang="sl">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Registracija - Ceniki.si</title>
+      <link rel="stylesheet" href="styles.css">
+      <style>
+          /* Specifični stili za to stran */
+          .form-container {
+              max-width: 400px;
+              margin: 4rem auto;
+              padding: 2rem;
+              background: #1e293b;
+              border-radius: 12px;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+              text-align: center;
+          }
+          .form-container h2 {
+              margin-bottom: 1.5rem;
+              color: #fff;
+          }
+          .form-container label {
+              display: block;
+              margin-top: 1rem;
+              margin-bottom: 0.5rem;
+              text-align: left;
+              color: #cbd5e1;
+          }
+          .form-container input,
+          .form-container button {
+              width: 100%;
+              padding: 0.75rem;
+              border-radius: 6px;
+              border: 1px solid #334155;
+              background: #0f172a;
+              color: #e2e8f0;
+              box-sizing: border-box;
+          }
+          .form-container button {
+              margin-top: 1.5rem;
+              cursor: pointer;
+              background: #3b82f6;
+              transition: 0.3s;
+          }
+          .form-container button:hover {
+              background: #60a5fa;
+          }
+          .form-container .note {
+              font-size: 0.8rem;
+              color: #94a3b8;
+              margin-top: 1rem;
+          }
+      </style>
+  </head>
+  <body>
+
+      <header>
+          <h1><a href="index.html" style="text-decoration: none; color: inherit;">🍽 Ceniki.si <span>– “Waze za restavracije”</span></a></h1>
+          <nav>
+              <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+              <a href="login.html" class="login">🔑 Prijava</a>
+              <a href="registracija.html" class="register">📌 Registracija</a>
+          </nav>
+      </header>
+
+      <div class="form-container">
+          <h2>Registracija</h2>
+          <form action="#" method="post">
+              <label for="username">Uporabniško ime:</label>
+              <input type="text" id="username" name="username" required>
+              
+              <label for="email">E-poštni naslov:</label>
+              <input type="email" id="email" name="email" required>
+
+              <label for="password">Geslo:</label>
+              <input type="password" id="password" name="password" required>
+
+              <label for="password-repeat">Ponovi geslo:</label>
+              <input type="password" id="password-repeat" name="password-repeat" required>
+              
+              <button type="submit">Registriraj se</button>
+          </form>
+          <p class="note">Z registracijo se strinjate s <a href="#" style="color: #94a3b8; text-decoration: underline;">splošnimi pogoji</a>.</p>
+      </div>
+
+  </body>
+  </html>
+
+  <script>
+      document.querySelector('form').addEventListener('submit', async (e) => {
+          e.preventDefault(); // Prepreči ponovno nalaganje strani
+
+          const username = document.getElementById('username').value;
+          const email = document.getElementById('email').value;
+          const password = document.getElementById('password').value;
+          const passwordRepeat = document.getElementById('password-repeat').value;
+
+          if (password !== passwordRepeat) {
+              alert('Gesli se ne ujemata!');
+              return;
+          }
+
+          try {
+              const response = await fetch('http://127.0.0.1:5000/api/register', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ username, email, password })
+              });
+
+              const data = await response.json();
+              alert(data.message);
+
+              if (response.ok) {
+                  window.location.href = 'login.html'; // Preusmeri na stran za prijavo
+              }
+          } catch (error) {
+              console.error('Napaka pri registraciji:', error);
+              alert('Prišlo je do napake. Poskusite znova.');
+          }
+      });
+  </script>

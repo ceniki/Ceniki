@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prevzemi restavracijo - Ceniki.si</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+        .form-container label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+        }
+        .form-container input,
+        .form-container textarea,
+        .form-container button {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #e2e8f0;
+            box-sizing: border-box;
+        }
+        .form-container button {
+            margin-top: 1.5rem;
+            cursor: pointer;
+            background: #3b82f6;
+            transition: 0.3s;
+        }
+        .form-container button:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="index.html" style="text-decoration: none; color: inherit;">🍽 Ceniki.si <span>– “Waze za restavracije”</span></a></h1>
+        <nav id="auth-nav">
+            <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+            <a href="login.html" class="login">🔑 Prijava</a>
+            <a href="registracija.html" class="register">📌 Registracija</a>
+        </nav>
+    </header>
+    <div class="form-container">
+        <h2>Prevzemite svoj profil restavracije</h2>
+        <p style="text-align: center; color: #94a3b8;">Izpolnite spodnji obrazec in potrdite lastništvo nad vašo restavracijo.</p>
+        <form id="claimForm">
+            <input type="hidden" id="submitted_by_username" name="submitted_by_username">
+            <label for="restaurantName">Ime restavracije:</label>
+            <input type="text" id="restaurantName" name="restaurantName" required>
+            <label for="contactName">Kontaktna oseba:</label>
+            <input type="text" id="contactName" name="contactName" required>
+            <label for="contactEmail">E-poštni naslov:</label>
+            <input type="email" id="contactEmail" name="contactEmail" required>
+            <label for="phone">Telefonska številka:</label>
+            <input type="tel" id="phone" name="phone" required>
+            <label for="message">Sporočilo:</label>
+            <textarea id="message" name="message" rows="4" placeholder="Npr. Prosim za potrditev profila za restavracijo..."></textarea>
+            <label for="proofImage">Naloži sliko dokazila (npr. registracija podjetja):</label>
+            <input type="file" id="proofImage" name="proofImage" accept="image/*" required>
+            <button type="submit">Pošlji zahtevek za prevzem</button>
+        </form>
+    </div>
+    <script>
+        const claimForm = document.getElementById('claimForm');
+        const submittedByInput = document.getElementById('submitted_by_username');
+
+        // Pridobi prijavljenega uporabnika iz localStorage
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+        
+        // Prikaz in preverjanje prijavljenega uporabnika ob nalaganju strani
+        if (loggedInUser && loggedInUser.username) {
+            submittedByInput.value = loggedInUser.username;
+        } else {
+            submittedByInput.value = 'Gost';
+        }
+
+        claimForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(claimForm);
+            
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/claim/submit', {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                const data = await response.json();
+                alert(data.message);
+                if (response.ok) {
+                    claimForm.reset();
+                }
+            } catch (error) {
+                console.error('Napaka pri oddaji zahtevka za prevzem:', error);
+                alert('Prišlo je do napake pri oddaji zahtevka za prevzem.');
+            }
+        });
+
+        // Posodobitev navigacijske vrstice
+        const authNav = document.getElementById('auth-nav');
+        if (loggedInUser && loggedInUser.username) {
+            let usernameDisplay = loggedInUser.username;
+            let profileClass = "";
+            let adminNavHTML = "";
+            if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+                adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
+                if (loggedInUser.role === 'admin') {
+                    adminNavHTML += `<a href="claim-requests.html" class="claim" style="background:#facc15;">📦 Zahtevki</a>`;
+                }
+            }
+            if (loggedInUser.role === 'admin') {
+                usernameDisplay = "👤 " + loggedInUser.username;
+                profileClass = "admin-name";
+            }
+            
+            authNav.innerHTML = `
+                <div class="profile-nav">
+                    ${adminNavHTML}
+                    <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
+                    <a href="#" id="logout-btn" class="login">Odjava</a>
+                </div>
+            `;
+            
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                localStorage.removeItem('loggedInUser');
+                window.location.href = 'index.html';
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nastavitev administratorja</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #statusMessage {
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nastavitev administratorja</h1>
+        <p>Če ste registrirani kot "Zore", bo vaša vloga posodobljena na administratorja.</p>
+        <p>Prosimo, počakajte...</p>
+        <p id="statusMessage">Nalaganje...</p>
+    </div>
+
+    <script>
+        const statusMessage = document.getElementById('statusMessage');
+
+        // Takoj po nalaganju strani pošljemo zahtevo za nastavitev vloge
+        window.onload = function() {
+            fetch('http://127.0.0.1:5000/api/make-admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: 'Zore' }) // Spremenite ime, če je drugačno
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Prikaz napake, če strežnik vrne status, ki ni 200
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.message || 'Strežniška napaka');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                statusMessage.style.color = 'gold';
+                statusMessage.textContent = 'Uspešno: ' + data.message;
+                alert(data.message);
+                console.log(data.message);
+            })
+            .catch(error => {
+                statusMessage.style.color = '#ef4444'; // Rdeča barva za napako
+                statusMessage.textContent = 'Napaka: ' + error.message;
+                console.error('Napaka:', error);
+                alert('Napaka: ' + error.message);
+            });
+        };
+    </script>
+</body>
+</html>

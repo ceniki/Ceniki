@@ -1,0 +1,167 @@
+/* Enoten CSS za spletno stran Ceniki.si */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+}
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: #1e293b;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+header h1 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #fff;
+}
+header h1 span {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: #94a3b8;
+}
+nav a {
+    margin-left: 0.5rem;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: 0.3s;
+}
+nav a.claim {
+    background: #f59e0b;
+    color: #fff;
+}
+nav a.claim:hover {
+    background: #fbbf24;
+}
+nav a.login {
+    background: #22c55e;
+    color: #fff;
+}
+nav a.login:hover {
+    background: #4ade80;
+}
+nav a.register {
+    background: #3b82f6;
+    color: #fff;
+}
+nav a.register:hover {
+    background: #60a5fa;
+}
+.hero {
+    text-align: center;
+    padding: 2rem;
+}
+.hero h2 {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+.hero p {
+    color: #94a3b8;
+    margin-bottom: 1.5rem;
+}
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+.filters input,
+.filters select,
+.filters button {
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    border: none;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+.filters button {
+    cursor: pointer;
+    background: #3b82f6;
+}
+.filters button:hover {
+    background: #60a5fa;
+}
+.content {
+    display: flex;
+    max-width: 1200px;
+    margin: auto;
+    gap: 1rem;
+    padding: 1rem;
+}
+#restaurantList {
+    flex: 1;
+}
+.restaurant {
+    background: #1e293b;
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.restaurant h3 {
+    margin: 0;
+    color: #facc15;
+}
+.restaurant p {
+    margin: 0.3rem 0;
+}
+.restaurant span {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    background: #334155;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    margin-right: 0.2rem;
+}
+.restaurant button {
+    background: #f59e0b;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.restaurant button:hover {
+    background: #fbbf24;
+}
+#map {
+    width: 40%;
+    height: 500px;
+    border-radius: 12px;
+}
+.profile-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.profile-nav .profile-link {
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    background: #3b82f6;
+    transition: 0.3s;
+    color: #fff; /* Poskrbite, da je osnovna barva bela */
+}
+.profile-nav .profile-link:hover {
+    background: #60a5fa;
+}
+.profile-nav .profile-link.admin-name {
+    color: #FFD700; /* Rdeča barva za administratorje */
+    font-weight: bold;
+}
+@media (max-width: 900px) {
+    .content {
+        flex-direction: column;
+    }
+    #map {
+        width: 100%;
+        height: 300px;
+    }
+}

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zahtevki za prevzem - Ceniki.si</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .claim-requests-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .claim-requests-container h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+        .claim-item {
+            background: #0f172a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #f59e0b;
+            display: flex;
+            gap: 1.5rem;
+        }
+        .claim-item h3 {
+            margin: 0 0 0.5rem;
+            color: #fff;
+        }
+        .claim-item p {
+            margin: 0 0 0.5rem;
+            color: #94a3b8;
+        }
+        .claim-details {
+            flex-grow: 1;
+        }
+        .claim-proof {
+            flex-shrink: 0;
+            width: 200px;
+        }
+        .claim-proof img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            border: 1px solid #334155;
+        }
+        .action-buttons {
+            margin-top: 1rem;
+        }
+        .action-buttons button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            transition: 0.3s;
+        }
+        .action-buttons .accept-btn {
+            background: #22c55e;
+            color: #fff;
+        }
+        .action-buttons .reject-btn {
+            background: #ef4444;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="index.html" style="text-decoration: none; color: inherit;">🍽 Ceniki.si <span>– “Waze za restavracije”</span></a></h1>
+        <nav id="auth-nav">
+            <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+            <a href="login.html" class="login">🔑 Prijava</a>
+            <a href="registracija.html" class="register">📌 Registracija</a>
+        </nav>
+    </header>
+
+    <div class="claim-requests-container">
+        <h2>Čakajoči zahtevki za prevzem</h2>
+        <div id="claimRequestsList">
+            <!-- Zahtevki se bodo naložili s pomočjo JavaScripta -->
+            <p style="text-align: center; color: #94a3b8;">Nalaganje zahtevkov...</p>
+        </div>
+    </div>
+
+    <script>
+        const authNav = document.getElementById('auth-nav');
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+
+        // Funkcija za nalaganje zahtevkov za prevzem
+        function loadClaimRequests() {
+            const claimRequestsList = document.getElementById('claimRequestsList');
+            claimRequestsList.innerHTML = '<p style="text-align: center; color: #94a3b8;">Nalaganje zahtevkov...</p>';
+
+            fetch('http://127.0.0.1:5000/api/claim/pending')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Napaka pri pridobivanju podatkov s strežnika.');
+                    }
+                    return response.json();
+                })
+                .then(claims => {
+                    claimRequestsList.innerHTML = '';
+                    if (claims.length === 0) {
+                        claimRequestsList.innerHTML = '<p style="text-align: center; color: #94a3b8;">Ni čakajočih zahtevkov za prevzem.</p>';
+                    } else {
+                        claims.forEach(claim => {
+                            const claimItem = document.createElement('div');
+                            claimItem.className = 'claim-item';
+                            claimItem.innerHTML = `
+                                <div class="claim-details">
+                                    <h3>${claim.restaurant_name}</h3>
+                                    <p><strong>Predlagatelj:</strong> ${claim.submitted_by}</p>
+                                    <p><strong>Kontaktna oseba:</strong> ${claim.contact_name}</p>
+                                    <p><strong>E-pošta:</strong> ${claim.contact_email}</p>
+                                    <p><strong>Telefon:</strong> ${claim.phone || 'ni podatka'}</p>
+                                    <p><strong>Sporočilo:</strong> ${claim.message || 'ni podatka'}</p>
+                                    <div class="action-buttons">
+                                        <button class="accept-btn" data-id="${claim.id}" data-user="${claim.submitted_by}" data-restaurant="${claim.restaurant_name}">Sprejmi</button>
+                                        <button class="reject-btn" data-id="${claim.id}">Zavrni</button>
+                                    </div>
+                                </div>
+                                <div class="claim-proof">
+                                    <img src="http://127.0.0.1:5000/${claim.proof_image_path}" alt="Dokazilo o lastništvu">
+                                </div>
+                            `;
+                            claimRequestsList.appendChild(claimItem);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Napaka pri nalaganju zahtevkov:', error);
+                    claimRequestsList.innerHTML = '<p style="text-align: center; color: #ef4444;">' + error.message + '</p>';
+                });
+        }
+
+        // Funkcija za obravnavanje gumbov "Sprejmi" in "Zavrni"
+        document.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('accept-btn')) {
+                const claimId = e.target.dataset.id;
+                const submittedBy = e.target.dataset.user;
+                const restaurantName = e.target.dataset.restaurant;
+
+                try {
+                    const response = await fetch(`http://127.0.0.1:5000/api/claim/approve/${claimId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ submitted_by: submittedBy, restaurant_name: restaurantName })
+                    });
+                    
+                    const data = await response.json();
+                    alert(data.message);
+                    if (response.ok) {
+                        loadClaimRequests(); // Ponovno naloži zahtevke
+                    }
+                } catch (error) {
+                    console.error('Napaka pri sprejemanju zahtevka:', error);
+                    alert('Napaka pri sprejemanju zahtevka.');
+                }
+            }
+            if (e.target.classList.contains('reject-btn')) {
+                const claimId = e.target.dataset.id;
+                try {
+                    const response = await fetch(`http://127.0.0.1:5000/api/claim/reject/${claimId}`, {
+                        method: 'POST',
+                    });
+                    const data = await response.json();
+                    alert(data.message);
+                    if (response.ok) {
+                        loadClaimRequests(); // Ponovno naloži zahtevke
+                    }
+                } catch (error) {
+                    console.error('Napaka pri zavračanju zahtevka:', error);
+                    alert('Napaka pri zavračanju zahtevka.');
+                }
+            }
+        });
+
+        // Preverimo, ali je uporabnik prijavljen in ima dovoljenje
+        if (loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === 'verified')) {
+            loadClaimRequests();
+        } else {
+            window.location.href = 'index.html';
+        }
+
+        // Posodobitev navigacijske vrstice
+        if (loggedInUser && loggedInUser.username) {
+            let usernameDisplay = loggedInUser.username;
+            let profileClass = "";
+            let adminNavHTML = "";
+            if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+                adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
+                if (loggedInUser.role === 'admin') {
+                    adminNavHTML += `<a href="claim-requests.html" class="claim" style="background:#facc15;">📦 Zahtevki</a>`;
+                }
+            }
+            if (loggedInUser.role === 'admin') {
+                usernameDisplay = "👤 " + loggedInUser.username;
+                profileClass = "admin-name";
+            }
+            
+            authNav.innerHTML = `
+                <div class="profile-nav">
+                    ${adminNavHTML}
+                    <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
+                    <a href="#" id="logout-btn" class="login">Odjava</a>
+                </div>
+            `;
+            
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                localStorage.removeItem('loggedInUser');
+                window.location.href = 'index.html';
+            });
+        }
+    </script>
+</body>
+</html>

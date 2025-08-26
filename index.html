@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ceniki.si</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.7);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #1e293b;
+            margin: 5% auto;
+            padding: 2rem;
+            border: 1px solid #334155;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: white;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .modal-content input, .modal-content button {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 1rem;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #e2e8f0;
+            box-sizing: border-box;
+        }
+        .modal-content button {
+            background: #3b82f6;
+            cursor: pointer;
+        }
+        .modal-content button:hover {
+            background: #60a5fa;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="index.html" style="text-decoration: none; color: inherit;">🍽 Ceniki.si <span>– “Waze za restavracije”</span></a></h1>
+        <nav id="auth-nav">
+            <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+            <a href="login.html" class="login">🔑 Prijava</a>
+            <a href="registracija.html" class="register">📌 Registracija</a>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h2>Najdi cenike v bližini — hitro, pregledno in ažurno</h2>
+        <p>Prebrskaj ponudbo, primerjaj cene jedi in pijač ter odpri najboljšo izbiro.</p>
+        <div class="filters">
+            <input type="text" id="searchBox" placeholder="Išči: ime restavracije ali jed (npr. 'pizza')" oninput="renderRestaurants()" />
+            <select><option>Vse kategorije</option><option>Pizza</option><option>Burger</option></select>
+            <select><option>Vsi cenovni razredi</option><option>€</option><option>€€</option><option>€€€</option></select>
+            <button>Moja lokacija</button>
+        </div>
+    </section>
+
+    <section class="content">
+        <div id="restaurantList"></div>
+        <div id="map"></div>
+    </section>
+
+    <!-- Modalno okno za posodobitve cen -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Predlagaj posodobitev za <span id="modalRestaurantName"></span></h2>
+            <form id="updateForm">
+                <input type="hidden" id="modalRestaurantInput" name="restaurant_name">
+                <label for="item_name">Ime izdelka:</label>
+                <input type="text" id="item_name" name="item_name" required>
+                <label for="new_price">Nova cena (€):</label>
+                <input type="number" id="new_price" name="new_price" step="0.01" required>
+                <label for="photo">Naloži sliko cenika/računa:</label>
+                <input type="file" id="photo" name="photo" accept="image/*" required>
+                <button type="submit">Pošlji posodobitev</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        let restaurants = [
+            {name:"Burger Postaja", address:"Trubarjeva 45, Ljubljana", lat:46.056, lng:14.505, category:"Burger", price:"€€", tags:["cheeseburger","sweet potato fries"], distance:"98 m", rating:4.2},
+            {name:"Azija Express", address:"Dunajska 56, Ljubljana", lat:46.065, lng:14.51, category:"Azijska", price:"€€", tags:["ramen","wok","sushi"], distance:"524 m", rating:4.0},
+            {name:"Žar pri Mostu", address:"Njegoševa 12, Ljubljana", lat:46.07, lng:14.52, category:"Grill", price:"€€", tags:["čevapčiči","pljeskavica"], distance:"607 m", rating:4.3},
+            {name:"Pizzerija Trg 3", address:"Stari trg 3, Ljubljana", lat:46.055, lng:14.507, category:"Pizza", price:"€€", tags:["pizza margherita","peka na drva","dostava"], distance:"649 m", rating:4.5}
+        ];
+
+        let map = L.map('map').setView([46.056,14.505], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:"© OpenStreetMap" }).addTo(map);
+
+        function renderRestaurants(){
+            const list = document.getElementById('restaurantList');
+            list.innerHTML = '';
+            const query = document.getElementById('searchBox').value.toLowerCase();
+            restaurants.filter(r => r.name.toLowerCase().includes(query) || r.tags.some(t=>t.includes(query))).forEach(r => {
+                let div = document.createElement('div');
+                div.className = 'restaurant';
+                div.innerHTML = `
+                    <h3>${r.name}</h3>
+                    <p>${r.address} • ${r.category} • ${r.price}</p>
+                    <p>${r.tags.map(t=>`<span>#${t}</span>`).join(' ')}</p>
+                    <p><b>od ${Math.round(Math.random()*5+5)},00 €</b> • ${r.distance} • ⭐ ${r.rating}</p>
+                    <button class="menu-btn" onclick="alert('Prikaz cenika za ${r.name}')">Cenik</button>
+                    <button class="update-price-btn" data-restaurant="${r.name}">Posodobi cenik</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        restaurants.forEach(r => {
+            L.marker([r.lat,r.lng]).addTo(map).bindPopup(`<b>${r.name}</b><br>${r.address}`);
+        });
+
+        renderRestaurants();
+        
+        const authNav = document.getElementById('auth-nav');
+        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+
+        if (loggedInUser && loggedInUser.username) {
+            let usernameDisplay = loggedInUser.username;
+            let profileClass = "";
+            let adminNavHTML = "";
+
+            if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+                adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
+            }
+
+            if (loggedInUser.role === 'admin') {
+                usernameDisplay = "👤 " + loggedInUser.username;
+                profileClass = "admin-name";
+            }
+            
+            authNav.innerHTML = `
+                <div class="profile-nav">
+                    ${adminNavHTML}
+                    <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
+                    <a href="#" id="logout-btn" class="login">Odjava</a>
+                </div>
+            `;
+            
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                localStorage.removeItem('loggedInUser');
+                window.location.reload();
+            });
+
+        } else {
+            authNav.innerHTML = `
+                <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+                <a href="login.html" class="login">🔑 Prijava</a>
+                <a href="registracija.html" class="register">📌 Registracija</a>
+            `;
+        }
+        
+        // Modal logic
+        const updateModal = document.getElementById('updateModal');
+        const updateForm = document.getElementById('updateForm');
+        const closeButton = document.querySelector('.close-button');
+        const modalRestaurantName = document.getElementById('modalRestaurantName');
+        const modalRestaurantInput = document.getElementById('modalRestaurantInput');
+        
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('update-price-btn')) {
+                const restaurantName = e.target.dataset.restaurant;
+                modalRestaurantName.textContent = restaurantName;
+                modalRestaurantInput.value = restaurantName;
+                updateModal.style.display = 'block';
+            }
+        });
+        
+        closeButton.onclick = () => {
+            updateModal.style.display = 'none';
+        };
+        
+        window.onclick = (e) => {
+            if (e.target === updateModal) {
+                updateModal.style.display = 'none';
+            }
+        };
+
+        updateForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('restaurant_name', modalRestaurantInput.value);
+            formData.append('item_name', document.getElementById('item_name').value);
+            formData.append('new_price', document.getElementById('new_price').value);
+            formData.append('submitted_by', loggedInUser ? loggedInUser.username : 'Gost');
+            const fileInput = document.getElementById('photo');
+            if (fileInput.files[0]) {
+                formData.append('photo', fileInput.files[0]);
+            }
+            
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/updates/submit', {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                const data = await response.json();
+                alert(data.message);
+                if (response.ok) {
+                    updateModal.style.display = 'none';
+                    updateForm.reset();
+                }
+            } catch (error) {
+                console.error('Napaka pri oddaji posodobitve:', error);
+                alert('Prišlo je do napake pri oddaji posodobitve.');
+            }
+        });
+    </script>
+</body>
+</html>
