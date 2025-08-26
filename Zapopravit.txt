@@ -1,0 +1,3 @@
+Popravki za naredit V1:
+Naredit gumb pozabljeno geslo ob loginu funkcionalen.
+Naredit email response za zahtevke, popravit gumb accept/reject

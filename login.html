@@ -1,119 +1,137 @@
 <!DOCTYPE html>
 <html lang="sl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prijava - Ceniki.si</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Specifični stili za to stran */
-    .form-container {
-      max-width: 400px;
-      margin: 4rem auto;
-      padding: 2rem;
-      background: #1e293b;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      text-align: center;
-    }
-    .form-container h2 {
-      margin-bottom: 1.5rem;
-      color: #fff;
-    }
-    .form-container label {
-      display: block;
-      margin-top: 1rem;
-      margin-bottom: 0.5rem;
-      text-align: left;
-      color: #cbd5e1;
-    }
-    .form-container input,
-    .form-container button {
-      width: 100%;
-      padding: 0.75rem;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
-      box-sizing: border-box;
-    }
-    .form-container button {
-      margin-top: 1.5rem;
-      cursor: pointer;
-      background: #22c55e;
-      transition: 0.3s;
-    }
-    .form-container button:hover {
-      background: #4ade80;
-    }
-    .form-container a {
-      display: block;
-      margin-top: 1rem;
-      color: #3b82f6;
-      text-decoration: none;
-    }
-    .form-container a:hover {
-      text-decoration: underline;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prijava - Ceniki.si</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .form-container {
+            max-width: 400px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .form-container h2 {
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+        .form-container label {
+            display: block;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            text-align: left;
+            color: #cbd5e1;
+        }
+        .form-container input,
+        .form-container button {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #e2e8f0;
+            box-sizing: border-box;
+        }
+        .form-container button {
+            margin-top: 1.5rem;
+            cursor: pointer;
+            background: #22c55e;
+            transition: 0.3s;
+        }
+        .form-container button:hover {
+            background: #4ade80;
+        }
+        .form-container a {
+            display: block;
+            margin-top: 1rem;
+            color: #3b82f6;
+            text-decoration: none;
+        }
+        .form-container a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
 
-  <header>
-    <h1><a href="index.html" style="text-decoration: none; color: inherit;">🍽 Ceniki.si <span>– “Waze za restavracije”</span></a></h1>
-    <nav>
-      <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
-      <a href="login.html" class="login">🔑 Prijava</a>
-      <a href="registracija.html" class="register">📌 Registracija</a>
-    </nav>
-  </header>
+    <header>
+        <h1><a href="index.html" style="text-decoration: none; color: inherit;">🍽 Ceniki.si <span>– “Waze za restavracije”</span></a></h1>
+        <nav>
+            <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+            <a href="login.html" class="login">🔑 Prijava</a>
+            <a href="registracija.html" class="register">📌 Registracija</a>
+        </nav>
+    </header>
 
-  <div class="form-container">
-    <h2>Prijava</h2>
-    <form action="#" method="post">
-      <label for="identifier">E-poštni naslov ali uporabniško ime:</label>
-      <input type="text" id="identifier" name="identifier" required>
+    <div class="form-container">
+        <h2>Prijava</h2>
+        <form id="loginForm">
+            <label for="email">E-poštni naslov:</label>
+            <input type="email" id="email" name="email" required>
 
-      <label for="password">Geslo:</label>
-      <input type="password" id="password" name="password" required>
-      
-      <button type="submit">Prijavi se</button>
-    </form>
-    <a href="#">Pozabljeno geslo?</a>
-  </div>
+            <label for="password">Geslo:</label>
+            <input type="password" id="password" name="password" required>
+            
+            <button type="submit">Prijavi se</button>
+        </form>
+        <a href="#">Pozabljeno geslo?</a>
+    </div>
 
+    <script type="module">
+        // Te nastavitve so posodobljene z vrednostmi iz vaše slike
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5LckjRosY5QxDYLs9VP0dOsLl-YRuOes",
+            authDomain: "ceniki-fcf67.firebaseapp.com",
+            projectId: "ceniki-fcf67",
+            storageBucket: "ceniki-fcf67.appspot.com",
+            messagingSenderId: "617986018856",
+            appId: "1:617986018856:web:45799e02eb02d8f6e5b3e5d"
+        };
+    
+        // Firebase init
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const loginForm = document.getElementById('loginForm');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                // Prijava uporabnika s Firebase Authentication
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Pridobitev podatkov o uporabniku iz Firestore, vključno z vlogo
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                const userData = userDoc.data();
+
+                // Shranjevanje podatkov o uporabniku v localStorage
+                localStorage.setItem('loggedInUser', JSON.stringify({
+                    username: userData.username,
+                    role: userData.role
+                }));
+                
+                alert('Prijava uspešna!');
+                window.location.href = 'index.html';
+
+            } catch (error) {
+                console.error('Napaka pri prijavi:', error);
+                alert('Prišlo je do napake pri prijavi. Preverite e-pošto in geslo.');
+            }
+        });
+    </script>
 </body>
 </html>
-
-<script>
-    document.querySelector('form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const identifier = document.getElementById('identifier').value;
-        const password = document.getElementById('password').value;
-
-        try {
-            const response = await fetch('http://127.0.0.1:5000/api/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ identifier, password })
-            });
-
-            const data = await response.json();
-            alert(data.message);
-
-            if (response.ok) {
-                // Ključna sprememba: Shranite podatke o uporabniku v localStorage, vključno z vlogo
-                localStorage.setItem('loggedInUser', JSON.stringify({ username: data.username, role: data.role }));
-                
-                console.log('Prijava uspešna, uporabnik:', data.username);
-                window.location.href = 'index.html';
-            }
-        } catch (error) {
-            console.error('Napaka pri prijavi:', error);
-            alert('Prišlo je do napake. Poskusite znova.');
-        }
-    });
-</script>
