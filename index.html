@@ -104,8 +104,28 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
+    <script type="module">
+        // Te nastavitve so posodobljene z vrednostmi iz vaše slike
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5LckjRosY5QxDYLs9VP0dOsLl-YRuOes",
+            authDomain: "ceniki-fcf67.firebaseapp.com",
+            projectId: "ceniki-fcf67",
+            storageBucket: "ceniki-fcf67.appspot.com",
+            messagingSenderId: "617986018856",
+            appId: "1:617986018856:web:45799e02eb02d8f6e5b3e5d"
+        };
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // Map data from Firestore
         let restaurants = [
             {name:"Burger Postaja", address:"Trubarjeva 45, Ljubljana", lat:46.056, lng:14.505, category:"Burger", price:"€€", tags:["cheeseburger","sweet potato fries"], distance:"98 m", rating:4.2},
             {name:"Azija Express", address:"Dunajska 56, Ljubljana", lat:46.065, lng:14.51, category:"Azijska", price:"€€", tags:["ramen","wok","sushi"], distance:"524 m", rating:4.0},
@@ -128,7 +148,6 @@
                     <p>${r.address} • ${r.category} • ${r.price}</p>
                     <p>${r.tags.map(t=>`<span>#${t}</span>`).join(' ')}</p>
                     <p><b>od ${Math.round(Math.random()*5+5)},00 €</b> • ${r.distance} • ⭐ ${r.rating}</p>
-                    <button class="menu-btn" onclick="alert('Prikaz cenika za ${r.name}')">Cenik</button>
                     <button class="update-price-btn" data-restaurant="${r.name}">Posodobi cenik</button>
                 `;
                 list.appendChild(div);
@@ -142,43 +161,56 @@
         renderRestaurants();
         
         const authNav = document.getElementById('auth-nav');
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+        let loggedInUser = null;
 
-        if (loggedInUser && loggedInUser.username) {
-            let usernameDisplay = loggedInUser.username;
-            let profileClass = "";
-            let adminNavHTML = "";
+        onAuthStateChanged(auth, async (user) => {
+            authNav.innerHTML = ''; // Počisti navigacijo ob spremembi statusa
+            if (user) {
+                // Uporabnik je prijavljen
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                const userData = userDoc.data();
+                loggedInUser = {
+                    username: userData.username,
+                    role: userData.role
+                };
+                
+                let usernameDisplay = loggedInUser.username;
+                let profileClass = "";
+                let adminNavHTML = "";
 
-            if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
-                adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
+                if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+                    adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
+                }
+
+                if (loggedInUser.role === 'admin') {
+                    usernameDisplay = "👤 " + loggedInUser.username;
+                    profileClass = "admin-name";
+                }
+                
+                authNav.innerHTML = `
+                    <div class="profile-nav">
+                        ${adminNavHTML}
+                        <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
+                        <a href="#" id="logout-btn" class="login">Odjava</a>
+                    </div>
+                `;
+                
+                document.getElementById('logout-btn').addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.reload();
+                });
+
+            } else {
+                // Uporabnik ni prijavljen
+                loggedInUser = null;
+                authNav.innerHTML = `
+                    <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+                    <a href="login.html" class="login">🔑 Prijava</a>
+                    <a href="registracija.html" class="register">📌 Registracija</a>
+                `;
             }
+        });
 
-            if (loggedInUser.role === 'admin') {
-                usernameDisplay = "👤 " + loggedInUser.username;
-                profileClass = "admin-name";
-            }
-            
-            authNav.innerHTML = `
-                <div class="profile-nav">
-                    ${adminNavHTML}
-                    <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
-                    <a href="#" id="logout-btn" class="login">Odjava</a>
-                </div>
-            `;
-            
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                localStorage.removeItem('loggedInUser');
-                window.location.reload();
-            });
-
-        } else {
-            authNav.innerHTML = `
-                <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
-                <a href="login.html" class="login">🔑 Prijava</a>
-                <a href="registracija.html" class="register">📌 Registracija</a>
-            `;
-        }
-        
         // Modal logic
         const updateModal = document.getElementById('updateModal');
         const updateForm = document.getElementById('updateForm');
@@ -208,33 +240,41 @@
         updateForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const formData = new FormData();
-            formData.append('restaurant_name', modalRestaurantInput.value);
-            formData.append('item_name', document.getElementById('item_name').value);
-            formData.append('new_price', document.getElementById('new_price').value);
-            formData.append('submitted_by', loggedInUser ? loggedInUser.username : 'Gost');
-            const fileInput = document.getElementById('photo');
-            if (fileInput.files[0]) {
-                formData.append('photo', fileInput.files[0]);
-            }
+            const formData = new FormData(updateForm);
             
-            try {
-                const response = await fetch('http://127.0.0.1:5000/api/updates/submit', {
-                    method: 'POST',
-                    body: formData,
-                });
-                
-                const data = await response.json();
-                alert(data.message);
-                if (response.ok) {
+            const fileInput = document.getElementById('photo');
+            const file = fileInput.files[0];
+
+            if (file) {
+                try {
+                    const storageRef = ref(storage, `updates/${Date.now()}_${file.name}`);
+                    await uploadBytes(storageRef, file);
+                    const photoURL = await getDownloadURL(storageRef);
+
+                    // Povežite se z Firestore (ne s Flask backendom)
+                    const updatesRef = doc(db, "updates", Date.now().toString());
+                    await setDoc(updatesRef, {
+                        restaurant_name: formData.get('restaurant_name'),
+                        item_name: formData.get('item_name'),
+                        new_price: parseFloat(formData.get('new_price')),
+                        submitted_by: loggedInUser ? loggedInUser.username : 'Gost',
+                        image_path: photoURL,
+                        status: 'pending'
+                    });
+                    
+                    alert('Predlog posodobitve uspešno oddan!');
                     updateModal.style.display = 'none';
                     updateForm.reset();
+                } catch (error) {
+                    console.error('Napaka pri oddaji posodobitve:', error);
+                    alert('Prišlo je do napake pri oddaji posodobitve.');
                 }
-            } catch (error) {
-                console.error('Napaka pri oddaji posodobitve:', error);
-                alert('Prišlo je do napake pri oddaji posodobitve.');
+            } else {
+                alert('Prosimo, priložite sliko.');
             }
         });
     </script>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 </body>
 </html>

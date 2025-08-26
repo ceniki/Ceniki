@@ -6,9 +6,13 @@ import os
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+
+# Nastavitev povezave z bazo podatkov PostgreSQL na Fly.io
+# Namesto SQLite bomo uporabili variablo okolja DATABASE_URL, ki jo nudi Fly.io
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@host:port/dbname')
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads' # Dodamo mapo za shranjevanje slik
+app.config['UPLOAD_FOLDER'] = 'uploads'
 db = SQLAlchemy(app)
 
 # Definiramo model za uporabniško tabelo v bazi
@@ -41,8 +45,8 @@ class PriceUpdate(db.Model):
     old_price = db.Column(db.Float, nullable=True)
     new_price = db.Column(db.Float, nullable=False)
     submitted_by_username = db.Column(db.String(80), nullable=False)
-    status = db.Column(db.String(20), default='pending') # 'pending', 'approved', 'rejected'
-    image_path = db.Column(db.String(255), nullable=True) # Pot do shranjene slike
+    status = db.Column(db.String(20), default='pending')
+    image_path = db.Column(db.String(255), nullable=True)
 
 # Nov model za zahtevke za prevzem restavracije
 class ClaimRequest(db.Model):
@@ -227,7 +231,6 @@ def approve_update(update_id):
         update = PriceUpdate.query.get(update_id)
         if update:
             update.status = 'approved'
-            # TUKAJ BI SPREMENILI CENO V GLAVNI TABELI RESTAVRACIJ
             db.session.commit()
             return jsonify({'message': 'Posodobitev sprejeta!'}), 200
         return jsonify({'message': 'Posodobitev ni najdena.'}), 404
@@ -254,7 +257,5 @@ def serve_image(filename):
 
 if __name__ == '__main__':
     with app.app_context():
-        if not os.path.exists('uploads'):
-            os.makedirs('uploads')
         db.create_all()
     app.run(debug=True)

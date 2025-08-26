@@ -76,59 +76,97 @@
             <button type="submit">Pošlji zahtevek za prevzem</button>
         </form>
     </div>
-    <script>
+    <script type="module">
+        // Te nastavitve so posodobljene z vrednostmi iz vaše slike
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5LckjRosY5QxDYLs9VP0dOsLl-YRuOes",
+            authDomain: "ceniki-fcf67.firebaseapp.com",
+            projectId: "ceniki-fcf67",
+            storageBucket: "ceniki-fcf67.appspot.com",
+            messagingSenderId: "617898618856",
+            appId: "1:617898618856:web:45799e02eb02d8f6e5b3e5d"
+        };
+
+        // Firebase init
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        
         const claimForm = document.getElementById('claimForm');
         const submittedByInput = document.getElementById('submitted_by_username');
+        let loggedInUser = null;
 
-        // Pridobi prijavljenega uporabnika iz localStorage
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
-        
-        // Prikaz in preverjanje prijavljenega uporabnika ob nalaganju strani
-        if (loggedInUser && loggedInUser.username) {
-            submittedByInput.value = loggedInUser.username;
-        } else {
-            submittedByInput.value = 'Gost';
-        }
+        // Preveri status prijave
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                const userData = userDoc.data();
+                loggedInUser = { username: userData.username, role: userData.role };
+                submittedByInput.value = loggedInUser.username;
+                updateNav(loggedInUser);
+            } else {
+                window.location.href = 'index.html'; // Preusmeri neprijavljene
+            }
+        });
 
         claimForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const formData = new FormData(claimForm);
+            const proofImage = document.getElementById('proofImage').files[0];
             
+            if (!loggedInUser) {
+                alert('Morate biti prijavljeni, da lahko oddate zahtevek.');
+                return;
+            }
+
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/claim/submit', {
-                    method: 'POST',
-                    body: formData,
+                // Naloži sliko na Firebase Storage
+                const storageRef = ref(storage, `claims/${Date.now()}_${proofImage.name}`);
+                await uploadBytes(storageRef, proofImage);
+                const imageUrl = await getDownloadURL(storageRef);
+
+                // Dodaj zahtevek v Firestore
+                await addDoc(collection(db, "claims"), {
+                    restaurant_name: formData.get('restaurantName'),
+                    contact_name: formData.get('contactName'),
+                    contact_email: formData.get('contactEmail'),
+                    phone: formData.get('phone'),
+                    message: formData.get('message'),
+                    submitted_by_username: loggedInUser.username,
+                    proof_image_path: imageUrl,
+                    status: 'pending'
                 });
                 
-                const data = await response.json();
-                alert(data.message);
-                if (response.ok) {
-                    claimForm.reset();
-                }
+                alert('Zahtevek za prevzem uspešno oddan!');
+                claimForm.reset();
             } catch (error) {
                 console.error('Napaka pri oddaji zahtevka za prevzem:', error);
                 alert('Prišlo je do napake pri oddaji zahtevka za prevzem.');
             }
         });
 
-        // Posodobitev navigacijske vrstice
-        const authNav = document.getElementById('auth-nav');
-        if (loggedInUser && loggedInUser.username) {
-            let usernameDisplay = loggedInUser.username;
+        function updateNav(user) {
+            const authNav = document.getElementById('auth-nav');
+            let usernameDisplay = user.username;
             let profileClass = "";
             let adminNavHTML = "";
-            if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+            if (user.role === 'admin' || user.role === 'verified') {
                 adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
-                if (loggedInUser.role === 'admin') {
+                if (user.role === 'admin') {
                     adminNavHTML += `<a href="claim-requests.html" class="claim" style="background:#facc15;">📦 Zahtevki</a>`;
                 }
             }
-            if (loggedInUser.role === 'admin') {
-                usernameDisplay = "👤 " + loggedInUser.username;
+            if (user.role === 'admin') {
+                usernameDisplay = "👤 " + user.username;
                 profileClass = "admin-name";
             }
-            
             authNav.innerHTML = `
                 <div class="profile-nav">
                     ${adminNavHTML}
@@ -136,9 +174,8 @@
                     <a href="#" id="logout-btn" class="login">Odjava</a>
                 </div>
             `;
-            
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                localStorage.removeItem('loggedInUser');
+            document.getElementById('logout-btn').addEventListener('click', async () => {
+                await signOut(auth);
                 window.location.href = 'index.html';
             });
         }

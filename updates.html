@@ -39,7 +39,7 @@
             height: auto;
             margin-top: 1rem;
             border-radius: 6px;
-            cursor: pointer; /* Dodano, da je slika klikljiva */
+            cursor: pointer;
         }
         .update-item .action-buttons {
             margin-top: 1rem;
@@ -130,63 +130,79 @@
         <div id="caption"></div>
     </div>
 
-    <script>
-        const authNav = document.getElementById('auth-nav');
-        const loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+    <script type="module">
+        // Te nastavitve so posodobljene z vrednostmi iz vaše slike
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5LckjRosY5QxDYLs9VP0dOsLl-YRuOes",
+            authDomain: "ceniki-fcf67.firebaseapp.com",
+            projectId: "ceniki-fcf67",
+            storageBucket: "ceniki-fcf67.appspot.com",
+            messagingSenderId: "617986018856",
+            appId: "1:617986018856:web:45799e02eb02d8f6e5b3e5d"
+        };
+        
+        // Firebase init
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+        import { getStorage, ref, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-storage.js";
 
-        function loadUpdates() {
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        
+        let loggedInUser = null;
+        
+        // Funkcija za nalaganje posodobitev
+        async function loadUpdates() {
             const updatesList = document.getElementById('updatesList');
             updatesList.innerHTML = '<p style="text-align: center; color: #94a3b8;">Nalaganje posodobitev...</p>';
-
-            fetch('http://127.0.0.1:5000/api/updates/pending')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Napaka pri pridobivanju podatkov s strežnika.');
-                    }
-                    return response.json();
-                })
-                .then(updates => {
-                    updatesList.innerHTML = '';
-                    if (updates.length === 0) {
-                        updatesList.innerHTML = '<p style="text-align: center; color: #94a3b8;">Ni čakajočih posodobitev.</p>';
-                    } else {
-                        updates.forEach(update => {
-                            const updateItem = document.createElement('div');
-                            updateItem.className = 'update-item';
-                            updateItem.innerHTML = `
-                                <h3>${update.restaurant_name} - ${update.item_name}</h3>
-                                <p><strong>Nova cena:</strong> ${update.new_price} €</p>
-                                <p>Predlagal: ${update.submitted_by}</p>
-                                <img src="http://127.0.0.1:5000/${update.image_path}" alt="Priložena slika" data-fullsrc="http://127.0.0.1:5000/${update.image_path}">
-                                <div class="action-buttons">
-                                    <a href="http://127.0.0.1:5000/${update.image_path}" download class="accept-btn">Prenesi sliko</a>
-                                    <button class="accept-btn" data-id="${update.id}">Sprejmi</button>
-                                    <button class="reject-btn" data-id="${update.id}">Zavrni</button>
-                                </div>
-                            `;
-                            updatesList.appendChild(updateItem);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Napaka pri nalaganju posodobitev:', error);
-                    updatesList.innerHTML = '<p style="text-align: center; color: #ef4444;">' + error.message + '</p>';
-                });
+            
+            try {
+                const q = query(collection(db, "updates"), where("status", "==", "pending"));
+                const querySnapshot = await getDocs(q);
+                
+                updatesList.innerHTML = '';
+                if (querySnapshot.empty) {
+                    updatesList.innerHTML = '<p style="text-align: center; color: #94a3b8;">Ni čakajočih posodobitev.</p>';
+                } else {
+                    querySnapshot.forEach((doc) => {
+                        const update = doc.data();
+                        const updateItem = document.createElement('div');
+                        updateItem.className = 'update-item';
+                        updateItem.innerHTML = `
+                            <h3>${update.restaurant_name} - ${update.item_name}</h3>
+                            <p><strong>Nova cena:</strong> ${update.new_price} €</p>
+                            <p>Predlagal: ${update.submitted_by}</p>
+                            <img src="${update.image_path}" alt="Priložena slika" data-fullsrc="${update.image_path}">
+                            <div class="action-buttons">
+                                <a href="${update.image_path}" download class="accept-btn">Prenesi sliko</a>
+                                <button class="accept-btn" data-id="${doc.id}">Sprejmi</button>
+                                <button class="reject-btn" data-id="${doc.id}">Zavrni</button>
+                            </div>
+                        `;
+                        updatesList.appendChild(updateItem);
+                    });
+                }
+            } catch (error) {
+                console.error('Napaka pri nalaganju posodobitev:', error);
+                updatesList.innerHTML = '<p style="text-align: center; color: #ef4444;">' + error.message + '</p>';
+            }
         }
         
         // Funkcija za obravnavanje gumbov "Sprejmi" in "Zavrni"
         document.addEventListener('click', async (e) => {
+            if (!loggedInUser || (loggedInUser.role !== 'admin' && loggedInUser.role !== 'verified')) {
+                return; // Prepreči nepooblaščenim uporabnikom interakcijo
+            }
+            
             if (e.target.classList.contains('accept-btn') && e.target.tagName === 'BUTTON') {
                 const updateId = e.target.dataset.id;
                 try {
-                    const response = await fetch(`http://127.0.0.1:5000/api/updates/approve/${updateId}`, {
-                        method: 'POST',
-                    });
-                    const data = await response.json();
-                    alert(data.message);
-                    if (response.ok) {
-                        loadUpdates();
-                    }
+                    await updateDoc(doc(db, "updates", updateId), { status: "approved" });
+                    alert('Posodobitev sprejeta!');
+                    loadUpdates();
                 } catch (error) {
                     console.error('Napaka pri sprejemanju posodobitve:', error);
                     alert('Napaka pri sprejemanju posodobitve.');
@@ -195,14 +211,9 @@
             if (e.target.classList.contains('reject-btn')) {
                 const updateId = e.target.dataset.id;
                 try {
-                    const response = await fetch(`http://127.0.0.1:5000/api/updates/reject/${updateId}`, {
-                        method: 'POST',
-                    });
-                    const data = await response.json();
-                    alert(data.message);
-                    if (response.ok) {
-                        loadUpdates();
-                    }
+                    await updateDoc(doc(db, "updates", updateId), { status: "rejected" });
+                    alert('Posodobitev zavrnjena.');
+                    loadUpdates();
                 } catch (error) {
                     console.error('Napaka pri zavračanju posodobitve:', error);
                     alert('Napaka pri zavračanju posodobitve.');
@@ -232,39 +243,64 @@
             }
         };
 
+        // Obravnava stanja prijave in nalaganje strani
+        const authNav = document.getElementById('auth-nav');
+        onAuthStateChanged(auth, async (user) => {
+            authNav.innerHTML = '';
+            if (user) {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                const userData = userDoc.data();
+                loggedInUser = {
+                    username: userData.username,
+                    role: userData.role
+                };
+                
+                let usernameDisplay = loggedInUser.username;
+                let profileClass = "";
+                let adminNavHTML = "";
 
-        if (loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === 'verified')) {
-            loadUpdates();
-        } else {
-            window.location.href = 'index.html';
-        }
-
-        if (loggedInUser && loggedInUser.username) {
-            let usernameDisplay = loggedInUser.username;
-            let profileClass = "";
-            let adminNavHTML = "";
-            if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
-                adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
-                if (loggedInUser.role === 'admin') {
-                    adminNavHTML += `<a href="claim-requests.html" class="claim" style="background:#facc15;">📦 Zahtevki</a>`;
+                if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+                    adminNavHTML = `<a href="updates.html" class="claim">📥 Posodobitve</a>`;
+                    if (loggedInUser.role === 'admin') {
+                        adminNavHTML += `<a href="claim-requests.html" class="claim" style="background:#facc15;">📦 Zahtevki</a>`;
+                    }
                 }
+
+                if (loggedInUser.role === 'admin') {
+                    usernameDisplay = "👤 " + loggedInUser.username;
+                    profileClass = "admin-name";
+                }
+                
+                authNav.innerHTML = `
+                    <div class="profile-nav">
+                        ${adminNavHTML}
+                        <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
+                        <a href="#" id="logout-btn" class="login">Odjava</a>
+                    </div>
+                `;
+                
+                document.getElementById('logout-btn').addEventListener('click', async () => {
+                    await signOut(auth);
+                    window.location.href = 'index.html';
+                });
+                
+                // Naloži posodobitve, če je uporabnik administrator ali verificiran
+                if (loggedInUser.role === 'admin' || loggedInUser.role === 'verified') {
+                    loadUpdates();
+                } else {
+                    window.location.href = 'index.html'; // Preusmeri neavtorizirane
+                }
+
+            } else {
+                loggedInUser = null;
+                authNav.innerHTML = `
+                    <a href="prevzemirestavracijo.html" class="claim">🏢 Prevzemi restavracijo</a>
+                    <a href="login.html" class="login">🔑 Prijava</a>
+                    <a href="registracija.html" class="register">📌 Registracija</a>
+                `;
+                 window.location.href = 'index.html'; // Preusmeri neprijavljene
             }
-            if (loggedInUser.role === 'admin') {
-                usernameDisplay = "👤 " + loggedInUser.username;
-                profileClass = "admin-name";
-            }
-            authNav.innerHTML = `
-                <div class="profile-nav">
-                    ${adminNavHTML}
-                    <a href="#" class="profile-link ${profileClass}">${usernameDisplay}</a>
-                    <a href="#" id="logout-btn" class="login">Odjava</a>
-                </div>
-            `;
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                localStorage.removeItem('loggedInUser');
-                window.location.href = 'index.html';
-            });
-        }
+        });
     </script>
 </body>
 </html>
