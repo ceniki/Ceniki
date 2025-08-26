@@ -1,18 +1,23 @@
-from flask import Flask, request, jsonify, send_from_directory
+import os
+import bcrypt
+from flask import Flask, request, jsonify, send_from_directory, render_template
+
+# Make sure to import SQLAlchemy from flask_sqlalchemy
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-import bcrypt
-import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='public', template_folder='public')
 CORS(app)
 
-# Nastavitev povezave z bazo podatkov PostgreSQL na Fly.io
-# Namesto SQLite bomo uporabili variablo okolja DATABASE_URL, ki jo nudi Fly.io
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:password@host:port/dbname')
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# We'll use a local 'uploads' folder for now. On a real server, you'd use a service like S3.
 app.config['UPLOAD_FOLDER'] = 'uploads'
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
 db = SQLAlchemy(app)
 
 # Definiramo model za uporabniško tabelo v bazi
@@ -59,6 +64,11 @@ class ClaimRequest(db.Model):
     submitted_by_username = db.Column(db.String(80), db.ForeignKey('user.username'), nullable=False)
     proof_image_path = db.Column(db.String(255), nullable=True)
     status = db.Column(db.String(20), default='pending')
+
+# Root route to serve the main index.html file
+@app.route('/')
+def serve_index():
+    return render_template('index.html')
 
 # API endpoint za registracijo
 @app.route('/api/register', methods=['POST'])
@@ -258,4 +268,4 @@ def serve_image(filename):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(port=os.environ.get('PORT', 5000))
