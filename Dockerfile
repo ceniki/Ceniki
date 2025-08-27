@@ -1,18 +1,18 @@
-# Uporaba uradne slike Python
+# Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
-# Nastavitev delovnega direktorija v kontejnerju
+# Set the working directory in the container
 WORKDIR /app
 
-# Kopiranje datotek z zahtevami in namestitev knjižnic
+# Copy the requirements file and install dependencies
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-# Kopiranje preostale aplikacijske kode
+# Copy the rest of the application's source code
 COPY . .
 
-# Izpostavitev porta 8080 (privzeti port za Fly.io)
+# Expose the port the app runs on
 EXPOSE 8080
 
-# Določitev ukaza za zagon aplikacije z uporabo Gunicorna
+# Define the command to run the application using Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
